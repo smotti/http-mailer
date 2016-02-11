@@ -70,14 +70,13 @@ func sendMail(form url.Values) {
   }
 
   f := mail.Address{"", *from}
-  t := mail.Address{"", *to}
   subj := "Contact"
   // TODO: Parse form for proper message body
-  body := fmt.Sprintf("%v", form)
+  body := fmt.Sprintf("%v\r\n", form)
 
   headers := make(map[string]string)
-  headers["From"] = f.String()
-  headers["To"] = t.String()
+//  headers["From"] = f.String()
+//  headers["To"] = t.String()
   headers["Subject"] = subj
 
   message := ""
@@ -115,6 +114,11 @@ func sendMail(form url.Values) {
     return
   }
 
+  if err := c.Hello("localhost"); err != nil {
+    log.Printf("Failed to send HELO or EHLO: %s", err)
+    return
+  }
+
   if *mail_tls {
     if ok, _ := c.Extension("STARTTLS"); ok {
       if err = c.StartTLS(tlsConfig); err != nil {
@@ -124,7 +128,9 @@ func sendMail(form url.Values) {
     }
   }
 
-  if ok, _ := c.Extension("PLAIN"); ok {
+  plain, _ := c.Extension("PLAIN")
+  auth, _ := c.Extension("AUTH")
+  if plain || auth {
     if err = c.Auth(a); err != nil {
       log.Printf("Failed to authenticate: %s", err)
       return
@@ -136,9 +142,12 @@ func sendMail(form url.Values) {
     return
   }
 
-  if err = c.Rcpt(t.Address); err != nil {
-    log.Printf("Failed to set to-address: %s", err)
-    return
+  toAddresses := strings.Split(*to, ",")
+  for _, t := range toAddresses {
+    if err = c.Rcpt(t); err != nil {
+      log.Printf("Failed to set to-address: %s, %s", t, err)
+      return
+    }
   }
 
   w, err := c.Data()
