@@ -19,7 +19,6 @@ import (
 
 var (
   from = flag.String("from", "", "From-Email address")
-  // TODO: Support multiple recipients
   to = flag.String("to", "", "To-Email address")
   pw = flag.String("pw", "", "From-Email account password. If auth is CRAMMD5 pw is used as secret.")
   user = flag.String("user", "", "From-Email account username, if not provided From-Email address will be used instead")
@@ -71,8 +70,10 @@ func sendMail(form url.Values) {
 
   f := mail.Address{"", *from}
   subj := "Contact"
-  // TODO: Parse form for proper message body
-  body := fmt.Sprintf("%v\r\n", form)
+  body := ""
+  for k, v := range form {
+    body += fmt.Sprintf("%s: %s\r\n", k, v[0])
+  }
 
   headers := make(map[string]string)
 //  headers["From"] = f.String()
